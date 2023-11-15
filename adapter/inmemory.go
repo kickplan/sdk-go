@@ -1,4 +1,3 @@
-// Package adapter provides a way to work with flags and metrics
 package adapter
 
 import (
@@ -6,25 +5,28 @@ import (
 	"fmt"
 )
 
-// InMemoryFlag structure represents a flag that is stored in memory
+// Verify that InMemory implements Adapter.
+var _ Adapter = (*InMemory)(nil)
+
+// InMemoryFlag structure represents a flag that is stored in memory.
 type InMemoryFlag struct {
 	Value interface{}
 }
 
-// InMemory is an adapter that stores flags in memory
+// InMemory is an adapter that stores flags in memory.
 type InMemory struct {
 	Flags map[string]InMemoryFlag
 }
 
-// NewInMemory returns a new InMemory adapter
+// NewInMemory returns a new InMemory adapter.
 func NewInMemory() *InMemory {
 	return &InMemory{
 		Flags: make(map[string]InMemoryFlag),
 	}
 }
 
-// BooleanEvaluation returns the value of a boolean flag
-func (i *InMemory) BooleanEvaluation(ctx context.Context, flag string, defaultValue bool) (bool, error) {
+// BooleanEvaluation returns the value of a boolean flag.
+func (i *InMemory) BooleanEvaluation(_ context.Context, flag string, defaultValue bool) (bool, error) {
 	memoryFlag, ok := i.find(flag)
 	if !ok {
 		return defaultValue, nil
@@ -33,8 +35,8 @@ func (i *InMemory) BooleanEvaluation(ctx context.Context, flag string, defaultVa
 	return genericResolve[bool](memoryFlag.Value, defaultValue)
 }
 
-// SetBoolean sets the value of a boolean flag
-func (i *InMemory) SetBoolean(ctx context.Context, flag string, value bool) error {
+// SetBoolean sets the value of a boolean flag.
+func (i *InMemory) SetBoolean(_ context.Context, flag string, value bool) error {
 	i.Flags[flag] = InMemoryFlag{
 		Value: value,
 	}
