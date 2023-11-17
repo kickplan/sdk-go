@@ -3,6 +3,8 @@ package adapter
 import (
 	"context"
 	"fmt"
+
+	"github.com/kickplan/sdk-go/eval"
 )
 
 // Verify that InMemory implements Adapter.
@@ -26,7 +28,12 @@ func NewInMemory() *InMemory {
 }
 
 // BooleanEvaluation returns the value of a boolean flag.
-func (i *InMemory) BooleanEvaluation(_ context.Context, flag string, defaultValue bool) (bool, error) {
+func (i *InMemory) BooleanEvaluation(
+	_ context.Context,
+	flag string,
+	defaultValue bool,
+	_ eval.Context,
+) (bool, error) {
 	memoryFlag, ok := i.find(flag)
 	if !ok {
 		return defaultValue, nil

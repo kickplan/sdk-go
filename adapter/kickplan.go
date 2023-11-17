@@ -2,12 +2,17 @@ package adapter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/kickplan/sdk-go/eval"
 )
 
 const (
@@ -21,18 +26,22 @@ const (
 	DefaultTimeout = 5 * time.Second
 )
 
+var ErrFlagNotFound = fmt.Errorf("FLAG_NOT_FOUND")
+
 // Verify that Kickplan implements Adapter.
 var _ Adapter = (*Kickplan)(nil)
 
 // FeatureResolutionRequest represents a request body for the feature resolution endpoint.
 type FeatureResolutionRequest struct {
-	Context map[string]interface{} `json:"context"`
+	Context  eval.Context `json:"context"`
+	Detailed bool         `json:"detailed"`
 }
 
 // FeatureResolutionResponse represents a response body for the feature resolution endpoint.
 type FeatureResolutionResponse struct {
-	Key   string      `json:"key"`
-	Value interface{} `json:"value"`
+	ErrorCode string      `json:"error_code"`
+	Key       string      `json:"key"`
+	Value     interface{} `json:"value"`
 }
 
 // Kickplan is an adapter that uses Kickplan API for flags.
@@ -79,8 +88,13 @@ func NewKickplan(
 }
 
 // BooleanEvaluation returns the value of a boolean flag.
-func (k *Kickplan) BooleanEvaluation(ctx context.Context, flag string, defaultValue bool) (bool, error) {
-	value, err := k.ResolveFeature(ctx, flag, defaultValue)
+func (k *Kickplan) BooleanEvaluation(
+	ctx context.Context,
+	flag string,
+	defaultValue bool,
+	evalCtx eval.Context,
+) (bool, error) {
+	value, err := k.ResolveFeature(ctx, flag, defaultValue, evalCtx)
 	if err != nil {
 		return defaultValue, err
 	}
@@ -93,10 +107,11 @@ func (k *Kickplan) ResolveFeature(
 	ctx context.Context,
 	flag string,
 	defaultValue interface{},
-	// todo: pass evaluation context
+	evalCtx eval.Context,
 ) (interface{}, error) {
 	body := FeatureResolutionRequest{
-		Context: map[string]interface{}{}, // todo: pass evaluation context
+		Context:  evalCtx,
+		Detailed: true,
 	}
 
 	// encode body
@@ -105,7 +120,7 @@ func (k *Kickplan) ResolveFeature(
 		return defaultValue, fmt.Errorf("failed to encode request body: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/flags/%s", k.endpoint, flag)
+	url := fmt.Sprintf("%s/features/%s", k.endpoint, flag)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
 		return defaultValue, fmt.Errorf("failed to create request: %w", err)
@@ -120,10 +135,29 @@ func (k *Kickplan) ResolveFeature(
 	}
 	defer resp.Body.Close()
 
+	// check status code
+	if resp.StatusCode != http.StatusOK {
+		return defaultValue, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	// read response body
+	b, err = k.readResponseBody(resp)
+	if err != nil {
+		return defaultValue, fmt.Errorf("failed to read response body: %w", err)
+	}
+
 	// decode response
 	var response FeatureResolutionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	if err := json.Unmarshal(b, &response); err != nil {
 		return defaultValue, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if response.ErrorCode != "" {
+		if response.ErrorCode == "FLAG_NOT_FOUND" {
+			return defaultValue, ErrFlagNotFound
+		}
+
+		return defaultValue, errors.New(response.ErrorCode)
 	}
 
 	return response.Value, nil
@@ -140,4 +174,18 @@ func (k *Kickplan) setHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip;q=1.0,deflate;q=0.6,identity;q=0.3")
 	req.Header.Set("Accept", "application/json")
+}
+
+func (k *Kickplan) readResponseBody(resp *http.Response) ([]byte, error) {
+	reader := resp.Body
+
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		var err error
+		reader, err = gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return io.ReadAll(reader)
 }

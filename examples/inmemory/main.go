@@ -1,3 +1,4 @@
+// A simple example of using in-memory adapter
 package main
 
 import (
@@ -13,7 +14,7 @@ func main() {
 
 	const flag = "my-flag"
 
-	b, err := client.GetBool(ctx, flag, false)
+	b, err := client.GetBool(ctx, flag, false, nil)
 	if err != nil {
 		log.Fatalf("failed to get flag: %v", err)
 		return
@@ -29,7 +30,7 @@ func main() {
 
 	log.Printf("updated my-flag")
 
-	b, err = client.GetBool(ctx, flag, false)
+	b, err = client.GetBool(ctx, flag, false, nil)
 	if err != nil {
 		log.Fatalf("failed to get flag: %v", err)
 		return

@@ -21,7 +21,7 @@ func TestDefaultAdapter(t *testing.T) {
 		t.Fatalf("expected adapter to be of type InMemory")
 	}
 
-	b, err := client.GetBool(context.TODO(), "my-flag", false)
+	b, err := client.GetBool(context.TODO(), "my-flag", false, nil)
 	if err != nil {
 		t.Fatalf("failed to get flag: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestDefaultAdapter(t *testing.T) {
 		t.Fatalf("failed to set flag: %v", err)
 	}
 
-	b, err = client.GetBool(context.TODO(), "my-flag", false)
+	b, err = client.GetBool(context.TODO(), "my-flag", false, nil)
 	if err != nil {
 		t.Fatalf("failed to get flag: %v", err)
 	}

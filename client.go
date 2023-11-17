@@ -7,17 +7,12 @@ import (
 	"os"
 
 	"github.com/kickplan/sdk-go/adapter"
+	"github.com/kickplan/sdk-go/eval"
 )
-
-// Adapter is an interface that defines the methods that a client adapter must implement.
-type Adapter interface {
-	BooleanEvaluation(ctx context.Context, flag string, defaultValue bool) (bool, error)
-	SetBoolean(ctx context.Context, flag string, value bool) error
-}
 
 // Client is a Kickplan client.
 type Client struct {
-	adapter Adapter
+	adapter adapter.Adapter
 }
 
 // Option is a function that configures a Client.
@@ -50,7 +45,7 @@ func NewClient(opt ...Option) *Client {
 }
 
 // WithAdapter sets the provider for the client.
-func WithAdapter(a Adapter) Option {
+func WithAdapter(a adapter.Adapter) Option {
 	return func(c *Client) error {
 		c.adapter = a
 		return nil
@@ -58,8 +53,13 @@ func WithAdapter(a Adapter) Option {
 }
 
 // GetBool returns a boolean flag.
-func (c *Client) GetBool(ctx context.Context, flag string, defaultValue bool) (bool, error) {
-	return c.adapter.BooleanEvaluation(ctx, flag, defaultValue)
+func (c *Client) GetBool(
+	ctx context.Context,
+	flag string,
+	defaultValue bool,
+	evalCtx eval.Context,
+) (bool, error) {
+	return c.adapter.BooleanEvaluation(ctx, flag, defaultValue, evalCtx)
 }
 
 // SetBool sets a boolean flag.
