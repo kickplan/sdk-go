@@ -4,12 +4,10 @@ package kickplan
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/kickplan/sdk-go/adapter"
 )
-
-// EvalContext is a map that represents the context of an evaluation.
-type EvalContext map[string]interface{}
 
 // Adapter is an interface that defines the methods that a client adapter must implement.
 type Adapter interface {
@@ -33,6 +31,15 @@ func NewClient(opt ...Option) *Client {
 		if err != nil {
 			panic(fmt.Sprintf("error applying option: %v", err))
 		}
+	}
+
+	if os.Getenv("KICKPLAN_ACCESS_TOKEN") != "" {
+		c.adapter = adapter.NewKickplan(
+			os.Getenv("KICKPLAN_ENDPOINT"),
+			os.Getenv("KICKPLAN_ACCESS_TOKEN"),
+			os.Getenv("KICKPLAN_USER_AGENT"),
+			os.Getenv("KICKPLAN_TIMEOUT"),
+		)
 	}
 
 	if c.adapter == nil {

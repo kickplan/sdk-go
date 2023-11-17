@@ -8,6 +8,9 @@ import (
 )
 
 func TestDefaultAdapter(t *testing.T) {
+	// Unset env vars to make sure that default adapter is used
+	t.Setenv("KICKPLAN_ACCESS_TOKEN", "")
+
 	client := NewClient()
 	if client.adapter == nil {
 		t.Fatalf("expected adapter to be set")
