@@ -26,6 +26,7 @@ const (
 	DefaultTimeout = 5 * time.Second
 )
 
+// ErrFlagNotFound is returned when a flag is not found.
 var ErrFlagNotFound = fmt.Errorf("FLAG_NOT_FOUND")
 
 // Verify that Kickplan implements Adapter.
@@ -44,9 +45,20 @@ type FeatureResolutionResponse struct {
 	Value     interface{} `json:"value"`
 }
 
+// MetricUpdateRequest represents a request body for the metric update endpoint.
+type MetricUpdateRequest struct {
+	Context eval.Context `json:"context"`
+	Value   int64        `json:"value"`
+}
+
+// HTTPClient is an interface that defines the methods that a HTTP client must implement.
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 // Kickplan is an adapter that uses Kickplan API for flags.
 type Kickplan struct {
-	client    http.Client
+	client    HTTPClient
 	endpoint  string
 	token     string
 	userAgent string
@@ -78,7 +90,7 @@ func NewKickplan(
 	}
 
 	return &Kickplan{
-		client: http.Client{
+		client: &http.Client{
 			Timeout: timeoutDuration,
 		},
 		endpoint:  endpoint,
@@ -102,6 +114,36 @@ func (k *Kickplan) BooleanEvaluation(
 	return genericResolve[bool](value, defaultValue)
 }
 
+// StringEvaluation returns the value of a string flag.
+func (k *Kickplan) StringEvaluation(
+	ctx context.Context,
+	flag string,
+	defaultValue string,
+	evalCtx eval.Context,
+) (string, error) {
+	value, err := k.ResolveFeature(ctx, flag, defaultValue, evalCtx)
+	if err != nil {
+		return defaultValue, err
+	}
+
+	return genericResolve[string](value, defaultValue)
+}
+
+// Int64Evaluation returns the value of a int64 flag.
+func (k *Kickplan) Int64Evaluation(
+	ctx context.Context,
+	flag string,
+	defaultValue int64,
+	evalCtx eval.Context,
+) (int64, error) {
+	value, err := k.ResolveFeature(ctx, flag, defaultValue, evalCtx)
+	if err != nil {
+		return defaultValue, err
+	}
+
+	return genericResolve[int64](value, defaultValue)
+}
+
 // ResolveFeature resolves a feature flag from the Kickplan API.
 func (k *Kickplan) ResolveFeature(
 	ctx context.Context,
@@ -109,39 +151,24 @@ func (k *Kickplan) ResolveFeature(
 	defaultValue interface{},
 	evalCtx eval.Context,
 ) (interface{}, error) {
+	url := fmt.Sprintf("%s/features/%s", k.endpoint, flag)
 	body := FeatureResolutionRequest{
 		Context:  evalCtx,
 		Detailed: true,
 	}
 
-	// encode body
-	b, err := json.Marshal(body)
+	resp, err := k.sendRequest(ctx, url, body)
 	if err != nil {
-		return defaultValue, fmt.Errorf("failed to encode request body: %w", err)
-	}
-
-	url := fmt.Sprintf("%s/features/%s", k.endpoint, flag)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
-	if err != nil {
-		return defaultValue, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	k.setHeaders(req)
-
-	// send request
-	resp, err := k.client.Do(req)
-	if err != nil {
-		return defaultValue, fmt.Errorf("failed to send request: %w", err)
+		return defaultValue, err
 	}
 	defer resp.Body.Close()
 
-	// check status code
 	if resp.StatusCode != http.StatusOK {
 		return defaultValue, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	// read response body
-	b, err = k.readResponseBody(resp)
+	b, err := k.readResponseBody(resp)
 	if err != nil {
 		return defaultValue, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -166,6 +193,92 @@ func (k *Kickplan) ResolveFeature(
 // SetBoolean sets the value of a boolean flag.
 func (k *Kickplan) SetBoolean(_ context.Context, _ string, _ bool) error {
 	return fmt.Errorf("not implemented")
+}
+
+// SetMetric sets the value of a metric.
+func (k *Kickplan) SetMetric(ctx context.Context, metric string, value int64, evalCtx eval.Context) error {
+	url := fmt.Sprintf("%s/metrics/%s/set", k.endpoint, metric)
+	body := MetricUpdateRequest{
+		Context: evalCtx,
+		Value:   value,
+	}
+
+	resp, err := k.sendRequest(ctx, url, body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// IncMetric increments the value of a metric.
+func (k *Kickplan) IncMetric(ctx context.Context, metric string, value int64, evalCtx eval.Context) error {
+	url := fmt.Sprintf("%s/metrics/%s/increment", k.endpoint, metric)
+	body := MetricUpdateRequest{
+		Context: evalCtx,
+		Value:   value,
+	}
+
+	resp, err := k.sendRequest(ctx, url, body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// DecMetric decrements the value of a metric.
+func (k *Kickplan) DecMetric(ctx context.Context, metric string, value int64, evalCtx eval.Context) error {
+	url := fmt.Sprintf("%s/metrics/%s/decrement", k.endpoint, metric)
+	body := MetricUpdateRequest{
+		Context: evalCtx,
+		Value:   value,
+	}
+
+	resp, err := k.sendRequest(ctx, url, body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (k *Kickplan) sendRequest(ctx context.Context, url string, body interface{}) (*http.Response, error) {
+	// encode body
+	b, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode request body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	k.setHeaders(req)
+
+	// send request
+	resp, err := k.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	return resp, nil
 }
 
 func (k *Kickplan) setHeaders(req *http.Request) {
