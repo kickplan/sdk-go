@@ -2,13 +2,9 @@ package adapter
 
 import (
 	"net/http"
-
-	"github.com/stretchr/testify/mock"
 )
 
-type mockClient struct {
-	mock.Mock
-}
+type mockClient struct{}
 
 var DoFunc func(req *http.Request) (*http.Response, error)
 
