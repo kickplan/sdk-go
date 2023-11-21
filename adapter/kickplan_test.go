@@ -92,7 +92,7 @@ func TestResolveFeatureNotFound(t *testing.T) {
 	"metadata": {},
 	"value": null,
 	"variant": null
-	}
+}
 `))),
 		}, nil
 	}
@@ -102,6 +102,79 @@ func TestResolveFeatureNotFound(t *testing.T) {
 	_, err := adapter.BooleanEvaluation(context.TODO(), "flag", false, nil)
 	if !errors.Is(err, ErrFlagNotFound) {
 		t.Fatalf("expected error to be ErrFlagNotFound, got %v", err)
+	}
+}
+
+func TestResolveFeatureObject(t *testing.T) {
+	DoFunc = func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body: io.NopCloser(bytes.NewReader([]byte(`{
+	"error_code": "",
+	"key": "flag",
+	"metadata": {},
+	"value": {
+		"key": "value",
+		"list": [1, 2, 3]
+	},
+	"variant": null
+	}
+`))),
+		}, nil
+	}
+
+	adapter := Kickplan{client: &mockClient{}}
+
+	obj, err := adapter.ObjectEvaluation(context.TODO(), "flag", false, nil)
+	if err != nil {
+		t.Fatalf("failed to resolve feature: %v", err)
+	}
+
+	type Object struct {
+		Key  string `json:"key"`
+		List []int  `json:"list"`
+	}
+
+	expected := Object{
+		Key:  "value",
+		List: []int{1, 2, 3},
+	}
+
+	var actual Object
+
+	// code below shows how to decode interface{} to struct
+	// alternatively, could use https://github.com/mitchellh/mapstructure to decode interface{} to a struct
+	// or json.Marshal `obj` and then json.Unmarshal to a struct
+	if objRaw, ok := obj.(map[string]interface{}); ok {
+		if key, ok := objRaw["key"]; ok {
+			if actual.Key, ok = key.(string); !ok {
+				t.Fatalf("failed to decode object key")
+			}
+		}
+
+		if list, ok := objRaw["list"]; ok {
+			if listr, ok := list.([]interface{}); ok {
+				for _, item := range listr {
+					actual.List = append(actual.List, int(item.(float64)))
+				}
+			}
+		}
+	} else {
+		t.Fatalf("failed to decode object")
+	}
+
+	if expected.Key != actual.Key {
+		t.Fatalf("expected object key to be %s, got %s", expected.Key, actual.Key)
+	}
+
+	if len(expected.List) != len(actual.List) {
+		t.Fatalf("expected object list to be %v, got %v", expected.List, actual.List)
+	}
+
+	for i := range expected.List {
+		if expected.List[i] != actual.List[i] {
+			t.Fatalf("expected object list to be %v, got %v", expected.List, actual.List)
+		}
 	}
 }
 

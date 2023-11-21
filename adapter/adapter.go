@@ -13,6 +13,7 @@ type Adapter interface {
 	BooleanEvaluation(ctx context.Context, flag string, defaultValue bool, evalCtx eval.Context) (bool, error)
 	StringEvaluation(ctx context.Context, flag string, defaultValue string, evalCtx eval.Context) (string, error)
 	Int64Evaluation(ctx context.Context, flag string, defaultValue int64, evalCtx eval.Context) (int64, error)
+	ObjectEvaluation(ctx context.Context, flag string, defaultValue interface{}, evalCtx eval.Context) (interface{}, error)
 
 	SetBoolean(ctx context.Context, flag string, value bool) error
 

@@ -144,6 +144,21 @@ func (k *Kickplan) Int64Evaluation(
 	return genericResolve[int64](value, defaultValue)
 }
 
+// ObjectEvaluation returns the value of a object flag.
+func (k *Kickplan) ObjectEvaluation(
+	ctx context.Context,
+	flag string,
+	defaultValue interface{},
+	evalCtx eval.Context,
+) (interface{}, error) {
+	value, err := k.ResolveFeature(ctx, flag, defaultValue, evalCtx)
+	if err != nil {
+		return defaultValue, err
+	}
+
+	return value, nil
+}
+
 // ResolveFeature resolves a feature flag from the Kickplan API.
 func (k *Kickplan) ResolveFeature(
 	ctx context.Context,

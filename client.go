@@ -62,7 +62,67 @@ func (c *Client) GetBool(
 	return c.adapter.BooleanEvaluation(ctx, flag, defaultValue, evalCtx)
 }
 
+// GetInt64 returns a float64 flag.
+func (c *Client) GetInt64(
+	ctx context.Context,
+	flag string,
+	defaultValue int64,
+	evalCtx eval.Context,
+) (int64, error) {
+	return c.adapter.Int64Evaluation(ctx, flag, defaultValue, evalCtx)
+}
+
+// GetString returns a string flag.
+func (c *Client) GetString(
+	ctx context.Context,
+	flag string,
+	defaultValue string,
+	evalCtx eval.Context,
+) (string, error) {
+	return c.adapter.StringEvaluation(ctx, flag, defaultValue, evalCtx)
+}
+
+// GetObject returns a object flag.
+func (c *Client) GetObject(
+	ctx context.Context,
+	flag string,
+	defaultValue interface{},
+	evalCtx eval.Context,
+) (interface{}, error) {
+	return c.adapter.ObjectEvaluation(ctx, flag, defaultValue, evalCtx)
+}
+
 // SetBool sets a boolean flag.
 func (c *Client) SetBool(ctx context.Context, flag string, value bool) error {
 	return c.adapter.SetBoolean(ctx, flag, value)
+}
+
+// SetMetric sets a metric.
+func (c *Client) SetMetric(
+	ctx context.Context,
+	metric string,
+	value int64,
+	evalCtx eval.Context,
+) error {
+	return c.adapter.SetMetric(ctx, metric, value, evalCtx)
+}
+
+// IncMetric increments a metric.
+func (c *Client) IncMetric(
+	ctx context.Context,
+	metric string,
+	value int64,
+	evalCtx eval.Context,
+) error {
+	return c.adapter.IncMetric(ctx, metric, value, evalCtx)
+}
+
+// DecMetric decrements a metric.
+func (c *Client) DecMetric(
+	ctx context.Context,
+	metric string,
+	value int64,
+	evalCtx eval.Context,
+) error {
+	return c.adapter.DecMetric(ctx, metric, value, evalCtx)
 }

@@ -73,6 +73,21 @@ func (i *InMemory) Int64Evaluation(
 	return genericResolve[int64](memoryFlag.Value, defaultValue)
 }
 
+// ObjectEvaluation returns the value of a object flag.
+func (i *InMemory) ObjectEvaluation(
+	_ context.Context,
+	flag string,
+	defaultValue interface{},
+	_ eval.Context,
+) (interface{}, error) {
+	memoryFlag, ok := i.find(flag)
+	if !ok {
+		return defaultValue, nil
+	}
+
+	return memoryFlag.Value, nil
+}
+
 // SetBoolean sets the value of a boolean flag.
 func (i *InMemory) SetBoolean(_ context.Context, flag string, value bool) error {
 	i.Flags[flag] = InMemoryFlag{
