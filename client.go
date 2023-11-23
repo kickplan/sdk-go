@@ -4,22 +4,15 @@ package kickplan
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/kickplan/sdk-go/adapter"
+	"github.com/kickplan/sdk-go/eval"
 )
-
-// EvalContext is a map that represents the context of an evaluation.
-type EvalContext map[string]interface{}
-
-// Adapter is an interface that defines the methods that a client adapter must implement.
-type Adapter interface {
-	BooleanEvaluation(ctx context.Context, flag string, defaultValue bool) (bool, error)
-	SetBoolean(ctx context.Context, flag string, value bool) error
-}
 
 // Client is a Kickplan client.
 type Client struct {
-	adapter Adapter
+	adapter adapter.Adapter
 }
 
 // Option is a function that configures a Client.
@@ -35,6 +28,15 @@ func NewClient(opt ...Option) *Client {
 		}
 	}
 
+	if os.Getenv("KICKPLAN_ACCESS_TOKEN") != "" {
+		c.adapter = adapter.NewKickplan(
+			os.Getenv("KICKPLAN_ENDPOINT"),
+			os.Getenv("KICKPLAN_ACCESS_TOKEN"),
+			os.Getenv("KICKPLAN_USER_AGENT"),
+			os.Getenv("KICKPLAN_TIMEOUT"),
+		)
+	}
+
 	if c.adapter == nil {
 		c.adapter = adapter.NewInMemory()
 	}
@@ -43,7 +45,7 @@ func NewClient(opt ...Option) *Client {
 }
 
 // WithAdapter sets the provider for the client.
-func WithAdapter(a Adapter) Option {
+func WithAdapter(a adapter.Adapter) Option {
 	return func(c *Client) error {
 		c.adapter = a
 		return nil
@@ -51,11 +53,76 @@ func WithAdapter(a Adapter) Option {
 }
 
 // GetBool returns a boolean flag.
-func (c *Client) GetBool(ctx context.Context, flag string, defaultValue bool) (bool, error) {
-	return c.adapter.BooleanEvaluation(ctx, flag, defaultValue)
+func (c *Client) GetBool(
+	ctx context.Context,
+	flag string,
+	defaultValue bool,
+	evalCtx eval.Context,
+) (bool, error) {
+	return c.adapter.BooleanEvaluation(ctx, flag, defaultValue, evalCtx)
+}
+
+// GetInt64 returns a float64 flag.
+func (c *Client) GetInt64(
+	ctx context.Context,
+	flag string,
+	defaultValue int64,
+	evalCtx eval.Context,
+) (int64, error) {
+	return c.adapter.Int64Evaluation(ctx, flag, defaultValue, evalCtx)
+}
+
+// GetString returns a string flag.
+func (c *Client) GetString(
+	ctx context.Context,
+	flag string,
+	defaultValue string,
+	evalCtx eval.Context,
+) (string, error) {
+	return c.adapter.StringEvaluation(ctx, flag, defaultValue, evalCtx)
+}
+
+// GetObject returns a object flag.
+func (c *Client) GetObject(
+	ctx context.Context,
+	flag string,
+	defaultValue interface{},
+	evalCtx eval.Context,
+) (interface{}, error) {
+	return c.adapter.ObjectEvaluation(ctx, flag, defaultValue, evalCtx)
 }
 
 // SetBool sets a boolean flag.
 func (c *Client) SetBool(ctx context.Context, flag string, value bool) error {
 	return c.adapter.SetBoolean(ctx, flag, value)
+}
+
+// SetMetric sets a metric.
+func (c *Client) SetMetric(
+	ctx context.Context,
+	metric string,
+	value int64,
+	evalCtx eval.Context,
+) error {
+	return c.adapter.SetMetric(ctx, metric, value, evalCtx)
+}
+
+// IncMetric increments a metric.
+func (c *Client) IncMetric(
+	ctx context.Context,
+	metric string,
+	value int64,
+	evalCtx eval.Context,
+) error {
+	return c.adapter.IncMetric(ctx, metric, value, evalCtx)
+}
+
+// DecMetric decrements a metric.
+func (c *Client) DecMetric(
+	ctx context.Context,
+	metric string,
+	value int64,
+	evalCtx eval.Context,
+) error {
+	return c.adapter.DecMetric(ctx, metric, value, evalCtx)
 }
