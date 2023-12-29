@@ -20,6 +20,8 @@ type Adapter interface {
 	SetMetric(ctx context.Context, metric string, value int64, evalCtx eval.Context) error
 	IncMetric(ctx context.Context, metric string, value int64, evalCtx eval.Context) error
 	DecMetric(ctx context.Context, metric string, value int64, evalCtx eval.Context) error
+
+	CreateAccount(ctx context.Context, key, name string, planKeys ...string) error
 }
 
 func genericResolve[T any](flag interface{}, defaultValue T) (T, error) {

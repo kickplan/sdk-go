@@ -114,6 +114,11 @@ func (i *InMemory) DecMetric(_ context.Context, metric string, value int64, _ ev
 	return nil
 }
 
+// CreateAccount stub.
+func (i *InMemory) CreateAccount(_ context.Context, _, _ string, _ ...string) error {
+	return nil
+}
+
 func (i *InMemory) find(flag string) (InMemoryFlag, bool) {
 	memoryFlag, ok := i.Flags[flag]
 	if !ok {

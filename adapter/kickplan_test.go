@@ -286,3 +286,53 @@ func TestMetricDecrement(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreateAccount(t *testing.T) {
+	DoFunc = func(req *http.Request) (*http.Response, error) {
+		if req.URL.String() != "https://api.domain.com/accounts" {
+			t.Fatalf("expected request endpoint to be https://api.domain.com/accounts, got %s", req.URL.String())
+		}
+
+		if req.Method != http.MethodPost {
+			t.Fatalf("expected request method to be POST, got %s", req.Method)
+		}
+
+		var body CreateAccountRequest
+		err := json.NewDecoder(req.Body).Decode(&body)
+		if err != nil {
+			t.Fatalf("failed to decode request body: %v", err)
+		}
+
+		if body.Key != "key" {
+			t.Fatalf("expected request key to be \"key\", got %q", body.Key)
+		}
+
+		if body.Name != "Name" {
+			t.Fatalf("expected request name to be \"Name\", got %q", body.Name)
+		}
+
+		if len(body.Plans) != 2 {
+			t.Fatalf("expected request plans to be have 2 items, got %d", len(body.Plans))
+		}
+
+		if body.Plans[0].PlanKey != "free" {
+			t.Fatalf("expected request plans to be [\"free\"], got %q", body.Plans)
+		}
+
+		if body.Plans[1].PlanKey != "pro" {
+			t.Fatalf("expected request plans to be [\"pro\"], got %q", body.Plans)
+		}
+
+		return &http.Response{
+			StatusCode: http.StatusAccepted,
+			Body:       io.NopCloser(bytes.NewReader([]byte(``))),
+		}, nil
+	}
+
+	adapter := Kickplan{client: &mockClient{}, endpoint: "https://api.domain.com"}
+
+	err := adapter.CreateAccount(context.Background(), "key", "Name", "free", "pro")
+	if err != nil {
+		t.Fatal(err)
+	}
+}

@@ -51,6 +51,18 @@ type MetricUpdateRequest struct {
 	Value   int64        `json:"value"`
 }
 
+// AccountPlan represents an account plan used in CreateAccountRequest.
+type AccountPlan struct {
+	PlanKey string `json:"plan_key"`
+}
+
+// CreateAccountRequest represents a request body for the accounts endpoint.
+type CreateAccountRequest struct {
+	Key   string        `json:"key"`
+	Name  string        `json:"name"`
+	Plans []AccountPlan `json:"account_plans"`
+}
+
 // HTTPClient is an interface that defines the methods that a HTTP client must implement.
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
@@ -258,6 +270,34 @@ func (k *Kickplan) DecMetric(ctx context.Context, metric string, value int64, ev
 	body := MetricUpdateRequest{
 		Context: evalCtx,
 		Value:   value,
+	}
+
+	resp, err := k.sendRequest(ctx, url, body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// CreateAccount creates an account and assigns plans to it.
+func (k *Kickplan) CreateAccount(ctx context.Context, key, name string, planKeys ...string) error {
+	url := fmt.Sprintf("%s/accounts", k.endpoint)
+	body := CreateAccountRequest{
+		Key:   key,
+		Name:  name,
+		Plans: []AccountPlan{},
+	}
+
+	for _, planKey := range planKeys {
+		body.Plans = append(body.Plans, AccountPlan{
+			PlanKey: planKey,
+		})
 	}
 
 	resp, err := k.sendRequest(ctx, url, body)
