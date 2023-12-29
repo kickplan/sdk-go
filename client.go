@@ -126,3 +126,12 @@ func (c *Client) DecMetric(
 ) error {
 	return c.adapter.DecMetric(ctx, metric, value, evalCtx)
 }
+
+// CreateAccount creates account and assigns plan keys to it.
+func (c *Client) CreateAccount(
+	ctx context.Context,
+	key, name string,
+	planKeys ...string,
+) error {
+	return c.adapter.CreateAccount(ctx, key, name, planKeys...)
+}
