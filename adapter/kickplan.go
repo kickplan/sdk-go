@@ -176,7 +176,7 @@ func (k *Kickplan) ResolveFeature(
 	if err != nil {
 		return defaultValue, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return defaultValue, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -222,7 +222,7 @@ func (k *Kickplan) SetMetric(ctx context.Context, metric string, value int64, ev
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -243,7 +243,7 @@ func (k *Kickplan) IncMetric(ctx context.Context, metric string, value int64, ev
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -264,7 +264,7 @@ func (k *Kickplan) DecMetric(ctx context.Context, metric string, value int64, ev
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
